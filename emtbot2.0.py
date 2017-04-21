@@ -16,7 +16,7 @@ To-Do:
 
 import datetime
 import time
-import _mysql as MySQL
+import MySQLdb as MySQL
 import telepot
 from pyemtmad import Wrapper
 import sys
@@ -234,6 +234,7 @@ def conectar(token):
 
 
 def handle(msg):
+
     db = conectar(token)
     helpstr = get_texto('help')
     chat_id = msg['chat']['id']
@@ -313,22 +314,13 @@ def handle(msg):
         else:
             try:
                 numparada = int(command)
-                arrivals = emt.geo.get_arrive_stop(stop_number=numparada, lang='es')
-                if arrivals[0]:
-                    try:
-                        submit_favorito(chat_id, numparada)
-                    except:
-                        pass
-                    set_estado_numparada(numparada, chat_id)
-                    bot.sendMessage(chat_id, 'Por favor, indícame una descripción para esta parada')
-                    submit_estado(chat_id, 3)
-                    db.close()
-                    # guardar numero de parada
-                else:
-                    bot.sendMessage(chat_id, 'No encuentro datos para ese número parada.\n'
-                                    + 'Puede ser porque no existe o porque no hay servicio ahora mismo\n'
-                                    + 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
-                    db.close()
+                submit_favorito(chat_id, numparada)
+                set_estado_numparada(numparada, chat_id)
+                bot.sendMessage(chat_id, 'Por favor, indícame una descripción para esta parada')
+                submit_estado(chat_id, 3)
+                db.close()
+                # guardar numero de parada
+
             except ValueError:
                 bot.sendMessage(chat_id, 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
                 db.close()
@@ -493,11 +485,11 @@ token["DBPswd"] = tokenfile.readline()[:-1]
 token["DBdb"] = tokenfile.readline()[:-1]
 tokenfile.close()
 emt = Wrapper(token['EMTMail'], token["EMToken"])
-db = conectar(token)
 
 bot = telepot.Bot(token["Telegram"])
 print("Estoy escuchando")
 bot.message_loop(handle)
+db = conectar(token)
 
 while 1:
     time.sleep(10)
