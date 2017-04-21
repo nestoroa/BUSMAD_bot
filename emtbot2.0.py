@@ -16,7 +16,7 @@ To-Do:
 
 import datetime
 import time
-import MySQLdb as MySQL
+import _mysql as MySQL
 import telepot
 from pyemtmad import Wrapper
 import sys
@@ -117,6 +117,7 @@ def get_estado(usuario):  # FUCNCION COMPLETA
     c = db.cursor()
     c.execute("""SELECT Estado FROM Estado_Conversacion WHERE ID_Usuario = %s""", (usuario,))
     estado = c.fetchone()[0]  # fetchone devuelve una tupla, al elegir '0' te devuelve el string de texto deseado
+    c.close()
     return estado
 
 
@@ -131,6 +132,7 @@ def submit_parada(chat_id, numparada):
     c = db.cursor()
     c.execute("INSERT INTO Log_paradas (ID_Usuario, ID_Parada) VALUES (%s, %s)", (chat_id, numparada))
     db.commit()
+    c.close()
 
 
 def submit_user(id_usuario, username):
@@ -138,12 +140,14 @@ def submit_user(id_usuario, username):
     c.execute("INSERT INTO Usuario (ID_Usuario, Username) VALUES (%s, %s)ON DUPLICATE KEY UPDATE  Username= %s",
               (id_usuario, username, username))
     db.commit()
+    c.close()
 
 
 def submit_favorito(chat_id, numparada):
     c = db.cursor()
     c.execute("INSERT INTO Favorito (ID_Usuario, ID_Parada) VALUES (%s, %s)", (chat_id, numparada))
     db.commit()
+    c.close()
 
 
 def submit_fav_descripcion(chat_id, numparada, descripcion):
@@ -151,6 +155,7 @@ def submit_fav_descripcion(chat_id, numparada, descripcion):
     c.execute("UPDATE Favorito SET Descripcion = %s WHERE ID_Usuario = %s AND ID_Parada = %s",
               (descripcion, chat_id, numparada))
     db.commit()
+    c.close()
 
 
 def get_favoritos(usuario):
@@ -158,6 +163,7 @@ def get_favoritos(usuario):
     listafavoritos = []
     i = 0
     c.execute("""SELECT ID_Parada, Descripcion FROM Favorito WHERE ID_Usuario = %s""", (usuario,))
+    c.close()
     aux = c.fetchone()
     while aux is not None:
         listafavoritos.append(aux)
@@ -178,12 +184,14 @@ def submit_estado(chat_id, estado):
         "INSERT INTO Estado_Conversacion (ID_Usuario, Estado) VALUES( %s, %s) ON DUPLICATE KEY UPDATE ID_Usuario= %s, Estado= %s",
         (chat_id, estado, chat_id, estado,))
     db.commit()
+    c.close()
 
 
 def get_estado_numparada(usuario):
     c = db.cursor()
     c.execute("""SELECT ID_Parada FROM Estado_Conversacion WHERE ID_Usuario = %s""", (usuario,))
     numparada = c.fetchone()[0]  # fetchone devuelve una tupla, al elegir '0' te devuelve el string de texto deseado
+    c.close()
     return numparada
 
 
@@ -191,12 +199,14 @@ def set_estado_numparada(numparada, usuario):
     c = db.cursor()
     c.execute("""UPDATE Estado_Conversacion SET ID_Parada = %s WHERE ID_Usuario = %s""", (numparada, usuario))
     db.commit()
+    c.close()
 
 
 def eliminar_favorito(chat_id, numparada):
     c = db.cursor()
     c.execute("DELETE FROM Favorito WHERE ID_Usuario = %s AND ID_Parada = %s", (chat_id, numparada))
     db.commit()
+    c.close()
 
 
 def existe_favorito(usuario, numparada):
@@ -207,6 +217,7 @@ def existe_favorito(usuario, numparada):
         return True
     else:
         return False
+    c.close()
 
 
 def make_unicode(input):
@@ -217,7 +228,13 @@ def make_unicode(input):
         return input
 
 
+def conectar(token):
+    return MySQL.connect(host=token['DBHost'], user=token["DBUser"], passwd=token["DBPswd"], db=token["DBdb"],
+                       port=token["DBPort"])
+
+
 def handle(msg):
+    db = conectar(token)
     helpstr = get_texto('help')
     chat_id = msg['chat']['id']
     command = msg['text']
@@ -228,7 +245,6 @@ def handle(msg):
         username = 'desconocido'
 
     now = datetime.datetime.now()
-    if db
 
     logstring = (
         '\n[' + str(now)[:19] + "] He recibido: " + command + " de " + username + " [ID: " + str(chat_id) + "]")
@@ -257,16 +273,19 @@ def handle(msg):
         submit_user(username=username, id_usuario=chat_id)
         submit_estado(chat_id, 0)
         estado = 0
+        db.close()
 
     if '/help' in command or '/ayuda' in command:
         bot.sendMessage(chat_id, helpstr)
         submit_estado(chat_id, 0)
         estado = 0
+        db.close()
 
     if estado == 1:  # ESPERA - Eserando un número de parada
         if '/cancelar' in command:
             bot.sendMessage(chat_id, 'Operación cancelada')
             submit_estado(chat_id, 0)
+            db.close()
         else:
             numparada = command.replace('/', '')
             try:
@@ -275,18 +294,22 @@ def handle(msg):
                     bot.sendMessage(chat_id, arrival_parser(arrivals) + '\nPowered by EMT de Madrid')
                     submit_parada(chat_id, int(numparada))
                     submit_estado(chat_id, 0)
+                    db.close()
                 else:
                     bot.sendMessage(chat_id, 'No encuentro datos para ese número parada.\n'
                                     + 'Puede ser porque no existe o porque no hay servicio ahora mismo\n'
                                     + 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
+                    db.close()
             except ValueError:
                 bot.sendMessage(chat_id, 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
+                db.close()
                 pass
 
     elif estado == 2:  # GUARDAR - Esperando número de parada
         if '/cancelar' in command:
             bot.sendMessage(chat_id, 'Operación cancelada')
             submit_estado(chat_id, 0)
+            db.close()
         else:
             try:
                 numparada = int(command)
@@ -299,13 +322,16 @@ def handle(msg):
                     set_estado_numparada(numparada, chat_id)
                     bot.sendMessage(chat_id, 'Por favor, indícame una descripción para esta parada')
                     submit_estado(chat_id, 3)
+                    db.close()
                     # guardar numero de parada
                 else:
                     bot.sendMessage(chat_id, 'No encuentro datos para ese número parada.\n'
                                     + 'Puede ser porque no existe o porque no hay servicio ahora mismo\n'
                                     + 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
+                    db.close()
             except ValueError:
                 bot.sendMessage(chat_id, 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
+                db.close()
                 pass
 
     elif estado == 3:  # GUARDAR - Esperando descripcion
@@ -314,6 +340,7 @@ def handle(msg):
             bot.sendMessage(chat_id, 'Operación cancelada')
             eliminar_favorito(chat_id, numparada)
             submit_estado(chat_id, 0)
+            db.close()
         else:
             submit_fav_descripcion(chat_id, numparada, command)
             bot.sendMessage(chat_id, 'Has elegido guardar el siguiente favorito.'
@@ -322,21 +349,25 @@ def handle(msg):
                             + '\n\n¿Confirmas la operación?'
                             + '\n /SI o /NO')
             submit_estado(chat_id, 4)
+            db.close()
 
     elif estado == 4:  # Guardar - Esperando confirmación de guardado
         numparada = get_estado_numparada(chat_id)
         if command == '/SI':
             bot.sendMessage(chat_id, 'Tu favorito se ha añadido satisfactoriamente')
             submit_estado(chat_id, 0)
+            db.close()
         if command == '/NO':
             bot.sendMessage(chat_id, 'Operación cancelada')
             eliminar_favorito(chat_id, numparada)
             submit_estado(chat_id, 0)
+            db.close()
 
     elif estado == 5:  # ELIMINAR - Esperando numero de parada
         if '/cancelar' in command:
             bot.sendMessage(chat_id, 'Operación cancelada')
             submit_estado(chat_id, 0)
+            db.close()
         else:
             numparada = int(command.replace('/', ''))
             try:
@@ -346,13 +377,16 @@ def handle(msg):
                     bot.sendMessage(chat_id, 'Has decidido borrar la parada nº ' + str(numparada)
                                     + ' de tus favoritos.\n\n¿Confirmas esta operación?'
                                     + '\n   /SI  o  /NO')
+                    db.close()
                 else:
                     bot.sendMessage(chat_id, 'Parece que la parada nº ' + str(numparada)
                                     + 'no está entre tus favoritos.\n\nPrueba de nuevo.'
                                     + '\nTambién puedes /cancelar la operación si quieres.')
+                    db.close()
             except ValueError:
                 bot.sendMessage(chat_id, 'Por favor, introduce un número de parada.'
                                 + '\nPuedes /cancelar la operación si quieres')
+                db.close()
                 pass
 
     elif estado == 6:  # ELIMINAR - Esperando confirmación
@@ -361,10 +395,12 @@ def handle(msg):
             eliminar_favorito(chat_id, numparada)
             bot.sendMessage(chat_id, 'Tu favorito se ha borrado satisfactoriamente')
             submit_estado(chat_id, 0)
+            db.close()
         if command == '/NO':
             bot.sendMessage(chat_id, 'Operación cancelada')
             eliminar_favorito(chat_id, numparada)
             submit_estado(chat_id, 0)
+            db.close()
 
     else:  # ESTADO == 0  ESTADO INICIAL
         # Devuelve los tiempos de espera de un numero de parada
@@ -372,15 +408,18 @@ def handle(msg):
             numparada = int(command[7:])
             send_parada(numparada, chat_id)
             submit_estado(chat_id, 0)
+            db.close()
 
         elif '/espera' in command and len(command) == 7:
             bot.sendMessage(chat_id, 'Por favor, indícame el número de parada')
             submit_estado(chat_id, 1)
+            db.close()
 
         elif '/guardar' in command:
             bot.sendMessage(chat_id, 'Vamos a guardar una parada en tus favoritos.\n'
                             + 'Por favor, indícame el número de parada')
             submit_estado(chat_id, 2)
+            db.close()
 
         elif '/favoritos' in command:
             favoritos = get_favoritos(chat_id)
@@ -388,6 +427,7 @@ def handle(msg):
                      + ' quieras saber los tiempos de espera:\n\n'
             bot.sendMessage(chat_id, string + favoritos)
             submit_estado(chat_id, 1)
+            db.close()
 
         elif '/eliminar' in command:
             favoritos = get_favoritos(chat_id)
@@ -395,6 +435,7 @@ def handle(msg):
                      + ' quieras eliminar:\n\n'
             bot.sendMessage(chat_id, string + favoritos)
             submit_estado(chat_id, 5)
+            db.close()
 
         elif '/start' not in command and '/help' not in command and '/ayuda' not in command:
             numparada = int(command.replace('/', ''))
@@ -404,12 +445,15 @@ def handle(msg):
                     bot.sendMessage(chat_id, arrival_parser(arrivals) + '\nPowered by EMT de Madrid')
                     submit_parada(chat_id, int(numparada))
                     submit_estado(chat_id, 0)
+                    db.close()
                 else:
                     bot.sendMessage(chat_id, 'No encuentro datos para ese número parada.\n'
                                     + 'Puede ser porque no existe o porque no hay servicio ahora mismo\n'
                                     + 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
+                    db.close()
             except ValueError:
                 bot.sendMessage(chat_id, 'Por favor, introduce un comando o un número de parada.')
+                db.close()
                 pass
 
     '''
@@ -449,8 +493,7 @@ token["DBPswd"] = tokenfile.readline()[:-1]
 token["DBdb"] = tokenfile.readline()[:-1]
 tokenfile.close()
 emt = Wrapper(token['EMTMail'], token["EMToken"])
-db = MySQL.connect(host=token['DBHost'], user=token["DBUser"], passwd=token["DBPswd"], db=token["DBdb"],
-                   port=token["DBPort"])
+db = conectar(token)
 
 bot = telepot.Bot(token["Telegram"])
 print("Estoy escuchando")
