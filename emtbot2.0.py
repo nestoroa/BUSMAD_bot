@@ -177,6 +177,19 @@ def get_favoritos(usuario):
         submit_estado(usuario, 0)
     return string
 
+def get_usuarios():
+    c = db.cursor()
+    lista_users = []
+    i = 0
+    c.execute("""SELECT ID_Usuario FROM Usuario""", )
+    aux = c.fetchone()
+    while aux is not None:
+        lista_users.append(aux[0])
+        aux = c.fetchone()
+        i += 1
+    c.close()
+    return lista_users
+
 
 def submit_estado(chat_id, estado):
     c = db.cursor()
@@ -427,6 +440,17 @@ def handle(msg):
                      + ' quieras eliminar:\n\n'
             bot.sendMessage(chat_id, string + favoritos)
             submit_estado(chat_id, 5)
+            db.close()
+
+        elif '/difusion' in command and username == "@nestoroa":
+            print("prueba")
+            lista_users = get_usuarios()
+            print(lista_users)
+            for usuario in lista_users:
+                try:
+                    bot.sendMessage(usuario, "MENSAJE DE DIFUSIÓN:\n" + command.split("/difusion "))
+                except:
+                    pass
             db.close()
 
         elif '/start' not in command and '/help' not in command and '/ayuda' not in command:
