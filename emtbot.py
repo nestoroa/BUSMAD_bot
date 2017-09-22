@@ -217,12 +217,8 @@ def handle(msg):
 
     else:  # ESTADO == 0  ESTADO INICIAL
         # Devuelve los tiempos de espera de un numero de parada
-        if '/espera' in command and len(command) > 7:
-            stop_number = int(command[7:])
-            send_stop(stop_number, chat_id)
-            dbc.submit_status(chat_id, 0)
 
-        elif '/espera' in command and len(command) == 7:
+        if '/espera' in command:
             bot.sendMessage(chat_id, 'Por favor, indícame el número de parada')
             dbc.submit_status(chat_id, 1)
 
@@ -256,8 +252,8 @@ def handle(msg):
                     pass
 
         elif '/start' not in command and '/help' not in command and '/ayuda' not in command:
-            stop_number = int(command.replace('/', ''))
             try:
+                stop_number = int(command.replace('/', ''))
                 arrivals = emt.geo.get_arrive_stop(stop_number=int(stop_number), lang='es')
                 if arrivals[0]:
                     bot.sendMessage(chat_id, arrival_parser(arrivals) + '\nPowered by EMT de Madrid')
@@ -267,33 +263,33 @@ def handle(msg):
                     bot.sendMessage(chat_id, 'No encuentro datos para ese número parada.\n'
                                     + 'Puede ser porque no existe o porque no hay servicio ahora mismo\n'
                                     + 'Por favor, introduce un número de parada.\nPuedes /cancelar si quieres')
-            except ValueError:
+            except:
                 bot.sendMessage(chat_id, 'Por favor, introduce un comando o un número de parada.')
                 pass
 
-    '''
-    #Devuelve las paradas de una linea determinada sentido ida
-    elif '/ida' in command and len(command) > 4:
-        numlinea = int(command[4:])
-        mapa = wrapper.geo.get_stops_line(lines=numlinea, direction='forward', lang='es')
-        if mapa[0]:
-            bot.sendMessage(chat_id, 'Ida de la linea ' + str(numlinea) + ':\n' + map_parser(
-                mapa) + '\nPowered by EMT de Madrid')
-        else:
-            bot.sendMessage(chat_id, 'Oops, no encuentro esa l�nea. Lo siento')
-    '''
-    '''
-    # Devuelve las paradas de una linea determinada sentido vuelta
-    elif '/vuelta' in command and len(command) > 7:
-        numlinea = int(command[7:])
-        mapa = wrapper.geo.get_stops_line(lines=numlinea, direction='backward', lang='es')
-        if mapa[0]:
-            bot.sendMessage(chat_id, 'Ida de la linea ' + str(numlinea) + ':\n' + map_parser(
-               mapa) + '\nPowered by EMT de Madrid')
-        else:
-            bot.sendMessage(chat_id, 'Oops, no encuentro esa l�nea. Lo siento')
-    '''
 
+'''
+#Devuelve las paradas de una linea determinada sentido ida
+elif '/ida' in command and len(command) > 4:
+    numlinea = int(command[4:])
+    mapa = wrapper.geo.get_stops_line(lines=numlinea, direction='forward', lang='es')
+    if mapa[0]:
+        bot.sendMessage(chat_id, 'Ida de la linea ' + str(numlinea) + ':\n' + map_parser(
+            mapa) + '\nPowered by EMT de Madrid')
+    else:
+        bot.sendMessage(chat_id, 'Oops, no encuentro esa l�nea. Lo siento')
+'''
+'''
+# Devuelve las paradas de una linea determinada sentido vuelta
+elif '/vuelta' in command and len(command) > 7:
+    numlinea = int(command[7:])
+    mapa = wrapper.geo.get_stops_line(lines=numlinea, direction='backward', lang='es')
+    if mapa[0]:
+        bot.sendMessage(chat_id, 'Ida de la linea ' + str(numlinea) + ':\n' + map_parser(
+           mapa) + '\nPowered by EMT de Madrid')
+    else:
+        bot.sendMessage(chat_id, 'Oops, no encuentro esa l�nea. Lo siento')
+'''
 
 credentials = {"EMTMail": sys.argv[1], "EMToken": sys.argv[2], "Telegram": sys.argv[3], "DBHost": sys.argv[4],
                "DBPort": sys.argv[5], "DBUser": sys.argv[6], "DBPswd": sys.argv[7], "DBdb": sys.argv[8]}
